@@ -1,57 +1,56 @@
 import { PIDEditor } from "../../pid/pid-editor.mjs";
-import { PENactorItemDrop } from '../actor-itemDrop.mjs';
+import { PENactorItemDrop } from "../actor-itemDrop.mjs";
 const { api, sheets } = foundry.applications;
 
-
-export class PendragonPartySheet extends api.HandlebarsApplicationMixin(sheets.ActorSheetV2) {
+export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
+  sheets.ActorSheetV2,
+) {
   constructor(options = {}) {
-      super(options);
-      this._dragDrop = this._createDragDropHandlers();
+    super(options);
+    this._dragDrop = this._createDragDropHandlers();
   }
 
   static DEFAULT_OPTIONS = {
-      classes: ['Pendragon', 'sheet', 'actor', 'party'],
-      position: {
-          width: 1210,
-          height: 180
-      },
-      window: {
-          resizable: true,
-      },
-      tag: "form",
-      dragDrop: [{ dragSelector: '[data-drag]', dropSelector: null }],
-      form: {
-          submitOnChange: true,
-      },
-      actions: {
-          editPid: this._onEditPid,
-          noteView: this._noteView,
-          toggleActor: this._onToggleActor,
-          deleteNPC: this._deleteNPC,
-          viewNPC: this._viewFromUuid,
-          addToken: this._addToken,
-          moraleloss: this._moraleLoss,            
-      }
-  }    
+    classes: ["Pendragon", "sheet", "actor", "party"],
+    position: {
+      width: 1210,
+      height: 180,
+    },
+    window: {
+      resizable: true,
+    },
+    tag: "form",
+    dragDrop: [{ dragSelector: "[data-drag]", dropSelector: null }],
+    form: {
+      submitOnChange: true,
+    },
+    actions: {
+      editPid: this._onEditPid,
+      noteView: this._noteView,
+      toggleActor: this._onToggleActor,
+      deleteNPC: this._deleteNPC,
+      viewNPC: this._viewFromUuid,
+      addToken: this._addToken,
+      moraleloss: this._moraleLoss,
+    },
+  };
 
   static PARTS = {
     header: {
-      template: 'systems/Pendragon/templates/actor/party.header.hbs',
-      scrollable: ['']
+      template: "systems/Pendragon/templates/actor/party.header.hbs",
+      scrollable: [""],
     },
-  }
+  };
 
   _configureRenderOptions(options) {
-      super._configureRenderOptions(options);
-      //Common parts to the actor - this is the order they are show on the sheet
-      options.parts = ['header'];
+    super._configureRenderOptions(options);
+    //Common parts to the actor - this is the order they are show on the sheet
+    options.parts = ["header"];
   }
 
-  _getTabs(parts) {
-  }
+  _getTabs(parts) {}
 
   async _prepareContext(options) {
-
     const context = await super._prepareContext(options);
 
     // Use a safe clone of the actor data for further operations.
@@ -61,112 +60,147 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(sheets.A
     context.system = actorData.system;
     context.flags = actorData.flags;
     context.isGM = game.user.isGM;
-    context.showHPVal = await game.settings.get('Pendragon', "showParty");
-    if (game.user.isGM) {context.showHPVal = true};
-    
-    //Prepare Party Members  
+    context.showHPVal = await game.settings.get("Pendragon", "showParty");
+    if (game.user.isGM) {
+      context.showHPVal = true;
+    }
+
+    //Prepare Party Members
     const members = [];
- 
+
     // Not strictly items but get party members
-    for (let memberUuid of this.actor.system.members) {
-      let member = await fromUuid(memberUuid.uuid)
+    console.log(await this.actor.system.getMembers());
+    for (let member of this.actor.system.members) {
       let highScoreLabel = "";
       if (!member) {
-        members.push ({
-          'name': game.i18n.localize('PEN.invalid'),
-          'uuid': memberUuid.uuid,
-          'image': "icons/svg/mystery-man.svg",
-          'hpLabel': "0/0",
-          'hpPerc': "0%",
-          'highScoreLabel': highScoreLabel,
-        })
+        members.push({
+          name: game.i18n.localize("PEN.invalid"),
+          uuid: member.uuid,
+          image: "icons/svg/mystery-man.svg",
+          hpLabel: "0/0",
+          hpPerc: "0%",
+          highScoreLabel: highScoreLabel,
+        });
       } else {
-        let hpLabel = member.system.hp.value + "/" + member.system.hp.max
-        let hpPerc =  Number(100*member.system.hp.value / member.system.hp.max)+"%"
-        let bigScores = await member.items.filter(i=>['skill','passion','trait'].includes(i.type))
+        console.log(member);
+        let hpLabel = member.system.hp.value + "/" + member.system.hp.max;
+        let hpPerc =
+          Number((100 * member.system.hp.value) / member.system.hp.max) + "%";
+        let bigScores = await member.items.filter((i) =>
+          ["skill", "passion", "trait"].includes(i.type),
+        );
 
-        let tempList = []
+        let tempList = [];
         for (let bScore of bigScores) {
-          if (bScore.type === "skill" && bScore.system.total>15) {
-            tempList.push({name: bScore.name, value: bScore.system.total, priority: 3})
-          } else if (bScore.type === "passion" && bScore.system.total>15) {
-            tempList.push({name: bScore.name, value: bScore.system.total, priority: 2})
-          } else if (bScore.type === "trait" && bScore.system.total>15) {
-            tempList.push({name: bScore.name, value: bScore.system.total, priority: 1})
-          } else if (bScore.type === "trait" && bScore.system.total<5) {
-            tempList.push({name: bScore.system.oppName, value: bScore.system.oppvalue, priority: 1})
+          if (bScore.type === "skill" && bScore.system.total > 15) {
+            tempList.push({
+              name: bScore.name,
+              value: bScore.system.total,
+              priority: 3,
+            });
+          } else if (bScore.type === "passion" && bScore.system.total > 15) {
+            tempList.push({
+              name: bScore.name,
+              value: bScore.system.total,
+              priority: 2,
+            });
+          } else if (bScore.type === "trait" && bScore.system.total > 15) {
+            tempList.push({
+              name: bScore.name,
+              value: bScore.system.total,
+              priority: 1,
+            });
+          } else if (bScore.type === "trait" && bScore.system.total < 5) {
+            tempList.push({
+              name: bScore.system.oppName,
+              value: bScore.system.oppvalue,
+              priority: 1,
+            });
           }
         }
-       // Sort TempList to prioritise Traits, then Passions, then Skills
-      tempList.sort(function(a, b){
-        let x = a.priority;
-        let y = b.priority;
-        let p = a.value;
-        let q = b.value;
-        if (x < y) {return -1};
-        if (x > y) {return 1};
-        if (p < q) {return 1};
-        if (p > q) {return -1};
+        // Sort TempList to prioritise Traits, then Passions, then Skills
+        tempList.sort(function (a, b) {
+          let x = a.priority;
+          let y = b.priority;
+          let p = a.value;
+          let q = b.value;
+          if (x < y) {
+            return -1;
+          }
+          if (x > y) {
+            return 1;
+          }
+          if (p < q) {
+            return 1;
+          }
+          if (p > q) {
+            return -1;
+          }
 
-
-        return 0;
-      });
+          return 0;
+        });
         let count = 0;
-      for (let tItm of tempList) {
-        count++;
-        if (count ===1) {
-          highScoreLabel = highScoreLabel + tItm.name; 
-        } else {
-          highScoreLabel = highScoreLabel + ", " + tItm.name;          
+        for (let tItm of tempList) {
+          count++;
+          if (count === 1) {
+            highScoreLabel = highScoreLabel + tItm.name;
+          } else {
+            highScoreLabel = highScoreLabel + ", " + tItm.name;
+          }
         }
-      }
 
-        members.push( {
-          'name': member.name,
-          'uuid': member.uuid,
-          'image': member.img,
-          'hpLabel': hpLabel,
-          'hpPerc': hpPerc,
-          'highScoreLabel': highScoreLabel,
+        members.push({
+          name: member.name,
+          uuid: member.uuid,
+          image: member.img,
+          hpLabel: hpLabel,
+          hpPerc: hpPerc,
+          highScoreLabel: highScoreLabel,
         });
       }
     }
     //context.members = members.sort(function (a, b) {return a.name.localeCompare(b.name)});
-    context.members = members
-    console.log(context)
+    context.members = members;
+    console.log(context);
     return context;
   }
-
-
 
   // -----------------------------------LISTENERS-----------------------------------------
   //Activate event listeners using the prepared sheet HTML
   _onRender(context, _options) {
     this._dragDrop.forEach((d) => d.bind(this.element));
-    this.element.querySelectorAll('.item-edit').forEach(n => n.addEventListener("click", this.#viewItem.bind(this)))
-    this.element.querySelectorAll('.viewFromUuid').forEach(n => n.addEventListener("click", this.#viewFromUuid.bind(this)))
-    this.element.querySelectorAll('.deleteMember').forEach(n => n.addEventListener("dblclick", this.#deleteMember.bind(this)))    
-
+    this.element
+      .querySelectorAll(".item-edit")
+      .forEach((n) => n.addEventListener("click", this.#viewItem.bind(this)));
+    this.element
+      .querySelectorAll(".viewFromUuid")
+      .forEach((n) =>
+        n.addEventListener("click", this.#viewFromUuid.bind(this)),
+      );
+    this.element
+      .querySelectorAll(".deleteMember")
+      .forEach((n) =>
+        n.addEventListener("dblclick", this.#deleteMember.bind(this)),
+      );
   }
-
 
   async #viewItem(event) {
     const li = $(ev.currentTarget).parents(".item");
     const item = this.actor.items.get(li.data("itemid"));
-    if (item.type === 'relationship') {
-      this._updateRelationship(li.data("itemid"), item.system.person1Name)
-      return
+    if (item.type === "relationship") {
+      this._updateRelationship(li.data("itemid"), item.system.person1Name);
+      return;
     }
-    item.sheet.render(true);    
+    item.sheet.render(true);
   }
 
   //View Party Member
-  async #viewFromUuid(event){
+  async #viewFromUuid(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
     const itemId = event.currentTarget.closest(".party-member").dataset.itemId;
-    let viewDoc = await fromUuid(itemId)
-    if (viewDoc) viewDoc.sheet.render(true)
+    let viewDoc = await fromUuid(itemId);
+    if (viewDoc) viewDoc.sheet.render(true);
   }
 
   //Delete a Party Member
@@ -174,43 +208,57 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(sheets.A
     event.preventDefault();
     event.stopImmediatePropagation();
     const itemId = event.currentTarget.closest(".party-member").dataset.itemId;
-    const membersIndex = this.actor.system.members.findIndex(i => (itemId && i.uuid === itemId))
+    const membersIndex = this.actor.system.members.findIndex(
+      (i) => itemId && i.uuid === itemId,
+    );
     if (membersIndex > -1) {
-      const members = this.actor.system.members ? foundry.utils.duplicate(this.actor.system.members) : []
-      members.splice(membersIndex, 1)
-      await this.actor.update({ 'system.members': members })
+      const members = this.actor.system.members
+        ? foundry.utils.duplicate(this.actor.system.members)
+        : [];
+      members.splice(membersIndex, 1);
+      await this.actor.update({ "system.members": members });
     }
-    return
+    return;
   }
-
 
   // Change default on Drop Item Create routine for requirements (single items and folder drop)-----------------------------------------------------------------
   async _onDropItemCreate(itemData) {
-    const newItemData = await PENactorItemDrop._PENonDropItemCreate(this.actor,itemData);
+    const newItemData = await PENactorItemDrop._PENonDropItemCreate(
+      this.actor,
+      itemData,
+    );
     return this.actor.createEmbeddedDocuments("Item", newItemData);
   }
 
   //Drop Actor on to an Actor Sheet
   async DropActor(data) {
-    let newActor = await fromUuid(data.uuid)
-    if (this.actor.type === 'party' && (['character'].includes(newActor.type))) {
-      const members = this.actor.system.members ? foundry.utils.duplicate(this.actor.system.members) : []
+    let newActor = await fromUuid(data.uuid);
+    if (this.actor.type === "party" && ["character"].includes(newActor.type)) {
+      const members = this.actor.system.members
+        ? foundry.utils.duplicate(this.actor.system.members)
+        : [];
       //Check member is not in members list
-      if (members.find(el => el.uuid === newActor.uuid)) {
-        ui.notifications.warn(game.i18n.format('PEN.dupParty', { name: (newActor.name +"(" + newActor.uuid +")") }));
-        return
+      if (members.find((el) => el.uuid === newActor.uuid)) {
+        ui.notifications.warn(
+          game.i18n.format("PEN.dupParty", {
+            name: newActor.name + "(" + newActor.uuid + ")",
+          }),
+        );
+        return;
       }
-      members.push({uuid:newActor.uuid})
-      await this.actor.update({'system.members': members})
-      return
+      members.push({ uuid: newActor.uuid });
+      await this.actor.update({ "system.members": members });
+      return;
     } else {
-      ui.notifications.warn(game.i18n.format('AOV.ErrorMsg.cantDropActor', { itemType: game.i18n.localize('TYPES.Actor.'+ newActor.type), actorType: game.i18n.localize('TYPES.Actor.'+ this.actor.type) }))
-      return
+      ui.notifications.warn(
+        game.i18n.format("AOV.ErrorMsg.cantDropActor", {
+          itemType: game.i18n.localize("TYPES.Actor." + newActor.type),
+          actorType: game.i18n.localize("TYPES.Actor." + this.actor.type),
+        }),
+      );
+      return;
     }
-  }  
-
-
-
+  }
 
   //-------------Drag and Drop--------------
 
@@ -226,64 +274,65 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(sheets.A
 
   //Callback actions which occur at the beginning of a drag start workflow.
   _onDragStart(event) {
-    const docRow = event.currentTarget.closest('li');
-    if ('link' in event.target.dataset) return;
+    const docRow = event.currentTarget.closest("li");
+    if ("link" in event.target.dataset) return;
     // Chained operation
     let dragData = this._getEmbeddedDocument(docRow)?.toDragData();
     if (!dragData) return;
     // Set data transfer
-    event.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+    event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
   }
 
   //Callback actions which occur when a dragged element is over a drop target.
-  _onDragOver(event) { }
+  _onDragOver(event) {}
 
   //Callback actions which occur when a dragged element is dropped on a target.
   async _onDrop(event) {
-    const data = foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
+    const data =
+      foundry.applications.ux.TextEditor.implementation.getDragEventData(event);
     const actor = this.actor;
-    const allowed = Hooks.call('dropActorSheetData', actor, this, data);
+    const allowed = Hooks.call("dropActorSheetData", actor, this, data);
     if (allowed === false) return;
 
     // Handle different data types
     switch (data.type) {
-      case 'ActiveEffect':
+      case "ActiveEffect":
         return this._onDropActiveEffect(event, data);
-      case 'Actor':
+      case "Actor":
         return this._onDropActor(event, data);
-      case 'Item':
+      case "Item":
         return this._onDropItem(event, data);
-      case 'Folder':
+      case "Folder":
         return this._onDropFolder(event, data);
     }
   }
 
   //Handle the dropping of ActiveEffect data onto an Actor Sheet
   async _onDropActiveEffect(event, data) {
-    return false
+    return false;
   }
 
   //Dropping an actor on to character
   async _onDropActor(event, data) {
-    event.preventDefault()
+    event.preventDefault();
     if (!this.actor.isOwner) return false;
     await this.DropActor(data);
-    return
+    return;
   }
 
   //Handle dropping of an item reference or item data onto an Actor Sheet
   async _onDropItem(event, data) {
-    return false
+    return false;
   }
 
   //Handle dropping of a Folder on an Actor Sheet.
   async _onDropFolder(event, data) {
-    return false
+    return false;
   }
 
   //Handle the final creation of dropped Item data on the Actor.
   async _onDropItemCreate(itemData, event) {
-    return false
+    return false;
   }
 
   //Returns an array of DragDrop instances
@@ -307,5 +356,5 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(sheets.A
       };
       return new foundry.applications.ux.DragDrop(d);
     });
-  }  
+  }
 }

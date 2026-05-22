@@ -733,7 +733,7 @@ export class PendragonActor extends Actor {
     let parties = await game.actors.filter((actr) => actr.type === "party");
     if (parties.length === 0) return;
     for (let party of parties) {
-      if (!party.sheet.rendered) continue;
+      if (!party.sheet?.rendered) continue;
       let update = false;
       for (let member of party.system.members) {
         if (member.uuid === actorData.uuid) {

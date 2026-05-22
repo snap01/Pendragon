@@ -1,46 +1,9 @@
 {
-  "Actor": {
-    "types": ["encounter", "battle"],
-    "templates": {
-    "encounter": {
-      "npcs": [],
-      "shortDesc": "",
-      "description": "",
-      "notes": "",
-      "moraleMin": 0,
-      "moraleLoss": "",
-      "opportunity": false,
-      "noteView": false,
-      "npcView": 99,
-      "lock": false,
-      "numOpp": 1,
-      "used": false
-    },
-    "battle": {
-      "encounters": [],
-      "knights": [],
-      "maxTurns": 8,
-      "currTurn": 1,
-      "lock": false,
-      "noteView": false,
-      "descripView": false,
-      "encView": false,
-      "description": "",
-      "notes": "",
-      "battleScore": 0,
-      "intensity": 0,
-      "fieldPos": "",
-      "maxMorale": 0,
-      "currMorale": 0,
-      "shortDesc": ""
-    }
-  },
   "Item": {
     "types": [
       "gear",
       "skill",
       "trait",
-      "wound",
       "history",
       "passion",
       "horse",
@@ -102,12 +65,6 @@
       "XP": false,
       "oppXP": false,
       "directed": ""
-    },
-    "wound": {
-      "value": 0,
-      "treated": false,
-      "created": false,
-      "source": "wound"
     },
     "history": {
       "templates": ["base"],

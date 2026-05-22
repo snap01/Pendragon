@@ -101,8 +101,12 @@
         "htmlFields": ["notes"]
       },
       "party": {},
-      "encounter": {},
-      "battle": {}
+      "encounter": {
+        "htmlFields": ["description", "notes"]
+      },
+      "battle": {
+        "htmlFields": ["description", "notes"]
+      }
     },
     "Item": {
       "gear": {},
