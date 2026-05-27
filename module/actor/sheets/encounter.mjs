@@ -212,7 +212,7 @@ export class PendragonEncounterSheet extends api.HandlebarsApplicationMixin(
       event.preventDefault();
       event.stopImmediatePropagation();
       const itemId = target.closest(".partic-cell").dataset.property;
-      this.actor.system.npcs.removeMember(itemId);
+      await this.actor.system.npcs.removeMember(itemId);
     }
   }
 
@@ -439,16 +439,14 @@ export class PendragonEncounterSheet extends api.HandlebarsApplicationMixin(
       const npcs = this.actor.system.npcs
         ? foundry.utils.duplicate(this.actor.system.npcs)
         : [];
+      // is this limitation really necessary?
       if (npcs.length > 3) {
         ui.notifications.warn(game.i18n.localize("PEN.encounterMax"));
         return;
       }
-      //Check npc is not in npcs list
-      if (npcs.find((el) => el.uuid === newActor.uuid)) {
-        ui.notifications.warn(game.i18n.localize("PEN.dupNPC"));
-        return;
-      }
-      this.actor.system.addMember(newActor);
+      // TODO: we need to do duplicate check in the data model
+      // see dnd5e module/data/actor/group.mjs for example
+      await this.actor.system.addMember(newActor);
     } else {
       ui.notifications.warn(game.i18n.format("PEN.cantDropActor"));
       return;

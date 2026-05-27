@@ -7,7 +7,7 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
 ) {
   constructor(options = {}) {
     super(options);
-    this._dragDrop = this._createDragDropHandlers();
+    this.#dragDrop = this._createDragDropHandlers();
   }
 
   static DEFAULT_OPTIONS = {
@@ -69,20 +69,19 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
     const members = [];
 
     // Not strictly items but get party members
-    console.log(await this.actor.system.getMembers());
-    for (let member of this.actor.system.members) {
+    const memberList = await this.actor.system.getMembers();
+    for (const { actor: member } of memberList) {
       let highScoreLabel = "";
       if (!member) {
         members.push({
           name: game.i18n.localize("PEN.invalid"),
-          uuid: member.uuid,
+          uuid: null,
           image: "icons/svg/mystery-man.svg",
           hpLabel: "0/0",
           hpPerc: "0%",
           highScoreLabel: highScoreLabel,
         });
       } else {
-        console.log(member);
         let hpLabel = member.system.hp.value + "/" + member.system.hp.max;
         let hpPerc =
           Number((100 * member.system.hp.value) / member.system.hp.max) + "%";
@@ -161,14 +160,13 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
     }
     //context.members = members.sort(function (a, b) {return a.name.localeCompare(b.name)});
     context.members = members;
-    console.log(context);
     return context;
   }
 
   // -----------------------------------LISTENERS-----------------------------------------
   //Activate event listeners using the prepared sheet HTML
   _onRender(context, _options) {
-    this._dragDrop.forEach((d) => d.bind(this.element));
+    this.#dragDrop.forEach((d) => d.bind(this.element));
     this.element
       .querySelectorAll(".item-edit")
       .forEach((n) => n.addEventListener("click", this.#viewItem.bind(this)));
@@ -208,17 +206,8 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
     event.preventDefault();
     event.stopImmediatePropagation();
     const itemId = event.currentTarget.closest(".party-member").dataset.itemId;
-    const membersIndex = this.actor.system.members.findIndex(
-      (i) => itemId && i.uuid === itemId,
-    );
-    if (membersIndex > -1) {
-      const members = this.actor.system.members
-        ? foundry.utils.duplicate(this.actor.system.members)
-        : [];
-      members.splice(membersIndex, 1);
-      await this.actor.update({ "system.members": members });
-    }
-    return;
+    const member = await fromUuid(itemId);
+    await this.actor.system.removeMember(member);
   }
 
   // Change default on Drop Item Create routine for requirements (single items and folder drop)-----------------------------------------------------------------
@@ -234,20 +223,9 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
   async DropActor(data) {
     let newActor = await fromUuid(data.uuid);
     if (this.actor.type === "party" && ["character"].includes(newActor.type)) {
-      const members = this.actor.system.members
-        ? foundry.utils.duplicate(this.actor.system.members)
-        : [];
-      //Check member is not in members list
-      if (members.find((el) => el.uuid === newActor.uuid)) {
-        ui.notifications.warn(
-          game.i18n.format("PEN.dupParty", {
-            name: newActor.name + "(" + newActor.uuid + ")",
-          }),
-        );
-        return;
-      }
-      members.push({ uuid: newActor.uuid });
-      await this.actor.update({ "system.members": members });
+      // TODO: we need to do duplicate check in the data model
+      // see dnd5e module/data/actor/group.mjs for example
+      await this.actor.system.addMember(newActor);
       return;
     } else {
       ui.notifications.warn(
@@ -337,10 +315,10 @@ export class PendragonPartySheet extends api.HandlebarsApplicationMixin(
 
   //Returns an array of DragDrop instances
   get dragDrop() {
-    return this._dragDrop;
+    return this.#dragDrop;
   }
 
-  _dragDrop;
+  #dragDrop;
 
   //Create drag-and-drop workflow handlers for this Application
   _createDragDropHandlers() {

@@ -280,11 +280,11 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
       }
       const itemId = target.closest(".partic-item").dataset.property;
       if (collectionName === "encounters") {
-        this.actor.system.removeEncounter(itemId);
+        await this.actor.system.removeEncounter(itemId);
         return;
       }
       if (collectionName === "knights") {
-        this.actor.system.removeKnight(itemId);
+        await this.actor.system.removeKnight(itemId);
         return;
       }
     }
@@ -532,21 +532,7 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
       await this.actor.system.addKnight(newActor);
       return;
     }
-    if (newActor.type == "character") {
-      let collectionName = "knights";
-      const collection = this.actor.system[collectionName]
-        ? foundry.utils.duplicate(this.actor.system[collectionName])
-        : [];
-      //Check encounter/knight is not in the relevant list
-      if (collection.find((el) => el.pid === npid)) {
-        ui.notifications.warn(game.i18n.localize("PEN.dupNPC"));
-        return;
-      }
-      collection.push({ uuid: newActor.uuid, pid: npid });
-      await this.actor.update({ [`system.${collectionName}`]: collection });
-    } else {
-      ui.notifications.warn(game.i18n.format("PEN.cantDropActor"));
-      return;
-    }
+    ui.notifications.warn(game.i18n.format("PEN.cantDropActor"));
+    return;
   }
 }

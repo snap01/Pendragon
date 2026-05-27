@@ -12,7 +12,7 @@ export class PartyData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     return {
       members: new ArrayField(
-        new ForeignDocumentField(foundry.documents.BaseActor, { idOnly: true }),
+        new ForeignDocumentField(foundry.documents.BaseActor),
       ),
     };
   }
@@ -28,6 +28,19 @@ export class PartyData extends foundry.abstract.TypeDataModel {
   }
 
   async getMembers() {
-    return this.members.map((a) => ({ actor: a }));
+    return this.members.map((a) => ({ actor: a() }));
+  }
+  async addMember(actor) {
+    const membersCollection = this.toObject().members;
+    membersCollection.push(actor.id);
+    return this.parent.update({ "system.members": membersCollection });
+  }
+
+  async removeMember(actor) {
+    const membersCollection = this.toObject().members;
+    let actorId = actor;
+    if (actor instanceof Actor) actorId = actor.id;
+    membersCollection.findSplice((u) => u == actorId);
+    return this.parent.update({ "system.members": membersCollection });
   }
 }
