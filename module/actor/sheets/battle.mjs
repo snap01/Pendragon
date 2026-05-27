@@ -9,7 +9,7 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
 ) {
   constructor(options = {}) {
     super(options);
-    this._dragDrop = this._createDragDropHandlers();
+    this.#dragDrop = this._createDragDropHandlers();
   }
 
   static DEFAULT_OPTIONS = {
@@ -114,7 +114,9 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
 
     let encounters = [];
     let knights = [];
-    for (const { actor: enc } of await this.actor.system.getEncounters()) {
+    const encList = await this.actor.system.getEncounters();
+
+    for (const { actor: enc } of encList) {
       if (enc) {
         let morale = true;
         const pid = enc.getFlag("Pendragon", "pidFlag");
@@ -141,25 +143,28 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
         });
       }
     }
-    for (let encPid of this.actor.system.knights) {
-      let enc = (await game.system.api.pid.fromPIDBest({ pid: encPid.pid }))[0];
-      if (enc) {
+    const kList = await this.actor.system.getKnights();
+    for (const { actor: knight } of kList) {
+      if (knight) {
+        const pid = knight.getFlag("Pendragon", "pidFlag");
         knights.push({
-          name: enc.name,
-          uuid: encPid.uuid,
-          pid: encPid.pid,
-          pos: game.i18n.localize("PEN.battlePos." + enc.system.battlePos),
-          fieldPos: game.i18n.localize("PEN.fieldPos." + enc.system.fieldPos),
-          fieldPosAbbr: game.i18n.localize(
-            "PEN.fieldPosAbbr." + enc.system.fieldPos,
+          name: knight.name,
+          id: knight.id,
+          pid: pid?.id,
+          pos: game.i18n.localize("PEN.battlePos." + knight.system.battlePos),
+          fieldPos: game.i18n.localize(
+            "PEN.fieldPos." + knight.system.fieldPos,
           ),
-          actr: enc,
+          fieldPosAbbr: game.i18n.localize(
+            "PEN.fieldPosAbbr." + knight.system.fieldPos,
+          ),
+          actr: knight,
         });
       } else {
         knights.push({
           name: game.i18n.localize("PEN.invalid"),
-          uuid: encPid.uuid,
-          npcPid: encPid.pid,
+          id: null,
+          npcPid: null,
           pos: "",
           fieldPos: "",
           fieldPosAbbr: "",
@@ -274,15 +279,13 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
         return;
       }
       const itemId = target.closest(".partic-item").dataset.property;
-      const actrIndex = this.actor.system[collectionName].findIndex(
-        (i) => itemId && i.uuid === itemId,
-      );
-      if (actrIndex > -1) {
-        const collection = this.actor.system[collectionName]
-          ? foundry.utils.duplicate(this.actor.system[collectionName])
-          : [];
-        collection.splice(actrIndex, 1);
-        await this.actor.update({ [`system.${collectionName}`]: collection });
+      if (collectionName === "encounters") {
+        this.actor.system.removeEncounter(itemId);
+        return;
+      }
+      if (collectionName === "knights") {
+        this.actor.system.removeKnight(itemId);
+        return;
       }
     }
   }
@@ -487,10 +490,10 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
 
   //Returns an array of DragDrop instances
   get dragDrop() {
-    return this._dragDrop;
+    return this.#dragDrop;
   }
 
-  _dragDrop;
+  #dragDrop;
 
   //Create drag-and-drop workflow handlers for this Application
   _createDragDropHandlers() {
@@ -514,18 +517,23 @@ export class PendragonBattleSheet extends api.HandlebarsApplicationMixin(
     if (!newActor) {
       return;
     }
-    let npid = newActor.flags.Pendragon?.pidFlag?.id;
-    if (!npid) {
-      ui.notifications.warn(
-        game.i18n.format("PEN.PIDFlag.noPIDFlag", { itemName: newActor.name }),
-      );
+    // let npid = newActor.flags.Pendragon?.pidFlag?.id;
+    // if (!npid) {
+    //   ui.notifications.warn(
+    //     game.i18n.format("PEN.PIDFlag.noPIDFlag", { itemName: newActor.name }),
+    //   );
+    //   return;
+    // }
+    if (newActor.type == "encounter") {
+      await this.actor.system.addEncounter(newActor);
       return;
     }
-    if (["character", "encounter"].includes(newActor.type)) {
+    if (newActor.type == "character") {
+      await this.actor.system.addKnight(newActor);
+      return;
+    }
+    if (newActor.type == "character") {
       let collectionName = "knights";
-      if (newActor.type === "encounter") {
-        collectionName = "encounters";
-      }
       const collection = this.actor.system[collectionName]
         ? foundry.utils.duplicate(this.actor.system[collectionName])
         : [];

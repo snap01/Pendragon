@@ -34,18 +34,22 @@ export class BattleData extends foundry.abstract.TypeDataModel {
   }
   static migrateData(source) {
     // migrate from {uuid: "Actor.id"} to documentId for ForeignDocumentField
-    source.knights = source.knights.map((m) => {
-      if (foundry.utils.getType(m) !== "Object") return m;
-      if (m.uuid.startsWith("Actor.")) return m.uuid.slice(6);
-      return m;
-    });
+    if (source.knights) {
+      source.knights = source.knights.map((m) => {
+        if (foundry.utils.getType(m) !== "Object") return m;
+        if (m.uuid.startsWith("Actor.")) return m.uuid.slice(6);
+        return m;
+      });
+    }
 
     // we are only storing UUIDs after migration
-    source.encounters = source.encounters.map((m) => {
-      if (foundry.utils.getType(m) !== "Object") return m;
-      if (m.uuid) return m.uuid;
-      return m;
-    });
+    if (source.encounters) {
+      source.encounters = source.encounters.map((m) => {
+        if (foundry.utils.getType(m) !== "Object") return m;
+        if (m.uuid) return m.uuid;
+        return m;
+      });
+    }
     return source;
   }
 
@@ -53,16 +57,23 @@ export class BattleData extends foundry.abstract.TypeDataModel {
     // Batch compendium lookups when retrieving members.
     const collections = new Map();
     const members = new Map();
+    const worldMembers = [];
 
     for (const uuid of this.encounters) {
       const { collection, id } = foundry.utils.parseUuid(uuid);
-      let ids = collections.get(collection);
-      if (!ids) {
-        ids = [];
-        collections.set(collection, ids);
+      if (
+        collection instanceof foundry.documents.collections.CompendiumCollection
+      ) {
+        let ids = collections.get(collection);
+        if (!ids) {
+          ids = [];
+          collections.set(collection, ids);
+        }
+        ids.push(id);
+        members.set(id, collection);
+      } else {
+        worldMembers.push({ actor: await fromUuid(uuid) });
       }
-      ids.push(id);
-      members.set(id, collection);
     }
 
     for (const [collection, ids] of collections.entries()) {
@@ -73,13 +84,50 @@ export class BattleData extends foundry.abstract.TypeDataModel {
       }
     }
 
-    return Array.from(
+    const actors = Array.from(
       members
         .entries()
         .map(([id, collection]) => {
-          return { actor: collection.get(id) };
+          if (
+            collection instanceof
+            foundry.documents.collections.CompendiumCollection
+          ) {
+            return { actor: collection.get(id) };
+          }
         })
         .filter((d) => d.actor),
     );
+    return actors.concat(worldMembers);
+  }
+
+  async addEncounter(actor) {
+    const membersCollection = this.toObject().encounters;
+    membersCollection.push(actor.uuid);
+    return this.parent.update({ "system.encounters": membersCollection });
+  }
+
+  async removeEncounter(actor) {
+    const membersCollection = this.toObject().encounters;
+    let actorId = actor;
+    if (actor instanceof Actor) actorId = actor.uuid;
+    membersCollection.findSplice((u) => u == actorId);
+    return this.parent.update({ "system.encounters": membersCollection });
+  }
+
+  async getKnights() {
+    return this.knights.map((a) => ({ actor: a() }));
+  }
+  async addKnight(actor) {
+    const membersCollection = this.toObject().knights;
+    membersCollection.push(actor.id);
+    return this.parent.update({ "system.knights": membersCollection });
+  }
+
+  async removeKnight(actor) {
+    const membersCollection = this.toObject().knights;
+    let actorId = actor;
+    if (actor instanceof Actor) actorId = actor.id;
+    membersCollection.findSplice((u) => u == actorId);
+    return this.parent.update({ "system.knights": membersCollection });
   }
 }
